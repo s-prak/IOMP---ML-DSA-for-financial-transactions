@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Payment Gateway</title>
+  <style>
+    body, html {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      height: 100%;
+      background-color: #f0f0f5;
+    }
+
+    .sidebar {
+      position: fixed;
+      width: 250px;
+      background-color: #333;
+      color: #fff;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100%;
+    }
+
+    .sidebar img {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      margin-bottom: 15px;
+    }
+
+    .sidebar .user-name {
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+
+    .content {
+      margin-left: 300px;
+      flex: 1;
+      padding: 40px;
+      overflow-y: auto;
+      height: 100vh;
+    }
+
+    .title {
+      font-size: 24px;
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      font-weight: bold;
+      margin-top: 20px;
+    }
+
+    input, select, button {
+      width: 100%;
+      padding: 15px;
+      margin-top: 8px;
+      border-radius: 5px;
+      border: 1px solid #ddd;
+      font-size: 16px;
+    }
+
+    button {
+      background-color: #0000FF;
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-size: 18px;
+      margin-top: 30px;
+    }
+
+    button:hover {
+      background-color: #0000FF;
+    }
+
+    #signatureResult {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-wrap: break-word; 
+    margin-top: 20px;
+    font-size: 16px;
+    color: #333;
+    max-width: 100%; 
+  }
+  
+  </style>
+</head>
+<body>
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <img src="/pic.jpg" alt="Profile Picture">
+    <div class="user-name">Logged in as: Jax Smith</div>
+  </div>
+
+  <div class="content">
+    <div class="title">Fund Transfer</div>
+
+    <label for="beneficiary">Choose Beneficiary:</label>
+    <select id="beneficiary" name="beneficiary" onchange="updatePayeeAccount()">
+    <option value="">Select a beneficiary</option>
+    <option value="Robert Downey">Robert Downey</option>
+    <option value="Tony Stark">Tony Stark</option>bene
+    <option value="Stephen Hawkins">Stephen Hawkins</option>
+    </select>
+
+    <form id="paymentForm" onsubmit="generateSignature(event)" action="/generate-signature" method="POST">
+
+        <label for="payerAccount">Payer Account Number:</label>
+        <input type="text" id="source" name="source" value="1234567890" readonly>
+
+        <label for="payeeAccount">Payee Account Number:</label>
+        <input type="text" id="destination" name="destination" placeholder="Select a beneficiary" readonly>
+
+        <label for="amount">Amount(in rupees):</label>
+        <input type="number" id="amount" name="amount" placeholder="Enter amount to transfer" min="1" required>
+
+        <button type="submit" >Make Payment</button>
+    </form>
+
+    <p id="signatureResult"></p>
+    
+
+    <form id="validationForm" onsubmit="validateSignature(event)" action="/validate-signature" method="POST">
+      <input type="text" style="display: none;" id="validateBeneficiary" name="validateBeneficiary">
+      <input type="text" style="display: none;" id="validateAmount" name="validateAmount">
+      <button id ="validateButton" style="display: none;" type="submit" >Validate Signature</button>
+    </form>
+
+    <p id="validationResult"></p>
+
+  </div>
+
+  <script>
+
+    let selectedBeneficiary = '';
+    let selectedAmount='';
+    
+    const payeeAccounts = {
+      'Robert Downey': '9876543210',
+      'Tony Stark': '1231231234',
+      'Stephen Hawkins': '4564564567'
+    };
+
+    function updatePayeeAccount() {
+      const beneficiary = document.getElementById('beneficiary').value;
+      const payeeAccountInput = document.getElementById('destination');
+      
+      // Set the payee account number based on the selected beneficiary
+      if (beneficiary) {
+        payeeAccountInput.value = payeeAccounts[beneficiary];
+        selectedBeneficiary = beneficiary;
+      } else {
+        payeeAccountInput.value = ''; // Clear if no beneficiary is selected
+      }
+    }
+
+    async function generateSignature(event) {
+      event.preventDefault(); // Prevent the form from submitting normally
+
+      const form = event.target;
+      const formData = new FormData(form);
+      const data = Object.fromEntries(formData.entries());
+      selectedAmount=data.amount;
+
+      try {
+          const response = await fetch('/generate-signature', {
+              method: 'POST',
+              headers: {
+                  'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(data)
+          });
+
+          const result = await response.json();
+
+          if (response.ok) {
+              const formattedSignature = result.signature.replace(/(.{120})/g, "$1\n");
+              document.getElementById("signatureResult").innerHTML = `<u>${result.message}</u><br>` + "\n" + formattedSignature;
+              alert(result.message);
+              document.getElementById("validateButton").style.display = 'block';
+          } else {
+              document.getElementById("signatureResult").innerText = result.message;
+              document.getElementById("validateButton").style.display = 'none';
+          }
+      } catch (error) {
+          console.error("Error:", error);
+          document.getElementById("signatureResult").innerText = "An error occurred.";
+          document.getElementById("validateButton").style.display = 'none';
+      }
+    }
+    
+    async function validateSignature(event) {
+      document.getElementById("validateBeneficiary").value = selectedBeneficiary;
+      document.getElementById("validateAmount").value = selectedAmount;
+      event.preventDefault();
+
+      console.log("HELLOOOOOO");
+      console.log(selectedBeneficiary);
+      console.log(selectedAmount);
+
+      const form = event.target;
+      const formData = new FormData(form);
+      const data = Object.fromEntries(formData.entries());
+
+      try {
+          const response = await fetch('/validate-signature', {
+              method: 'POST',
+              headers: {
+                  'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(data)
+          });
+
+          const result = await response.json();
+
+          if (response.ok) {
+              document.getElementById("validationResult").innerHTML = `<br>`+result.validationResult+`<br><br>`;
+              alert(result.validationResult);
+          } else {
+              document.getElementById("validationResult").innerHTML = result.validationResult;
+          }
+        }
+        catch(error){
+          document.getElementById("validationResult").innerText = "error";
+        }
+
+
+    }
+    
+  </script>
+</body>
+</html>
