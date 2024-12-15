@@ -2,7 +2,9 @@
   "dependencies": {
     "@noble/post-quantum": "^0.2.0",
     "express": "^4.21.1",
-    "fast-safe-stringify": "^2.1.1",
+    "fast-safe-stringify": "^2.1.1"
+  },
+  "devDependencies": {
     "nodemon": "^3.1.7"
   }
 }
